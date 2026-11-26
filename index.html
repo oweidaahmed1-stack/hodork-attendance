@@ -1,1 +1,217 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>حضور هودورك</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#172033;--muted:#667085;--blue:#2563eb;--line:#e5eaf2;--green:#12805c;--red:#c0392b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:#14213d;color:#fff;padding:20px 16px}header h1{font-size:22px;margin:0 0 5px}header p{margin:0;color:#cbd5e1;font-size:13px}
+main{max-width:850px;margin:18px auto;padding:0 12px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 4px 18px #1c2b4408}
+h2{font-size:18px;margin:0 0 12px}label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px}
+input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px solid #cfd7e5;border-radius:10px;background:#fff;color:var(--ink)}
+button{border:0;border-radius:10px;padding:11px 15px;background:var(--blue);color:#fff;font-weight:650;cursor:pointer;margin:6px 4px 0 0}
+button.secondary{background:#e9eef8;color:#24324a}button.danger{background:#a93226}button:disabled{opacity:.5}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tabs{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.tabs button{background:#e3eaf6;color:#23314b}.tabs button.active{background:var(--blue);color:white}
+.hidden{display:none!important}.muted{color:var(--muted);font-size:13px}.status{padding:10px;border-radius:10px;background:#eef4ff;margin:10px 0;font-size:14px;white-space:pre-wrap}.success{background:#e8f7ef;color:#116044}.error{background:#fff0ee;color:#9d2b20}
+.listitem{padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center}.listitem:last-child{border:0}
+#reader{width:100%;max-width:460px;margin:10px auto}#qrbox{display:flex;justify-content:center;padding:12px}#qrbox canvas,#qrbox img{max-width:100%}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right}th{color:var(--muted)}
+footer{text-align:center;color:#8490a3;font-size:12px;padding:20px}
+@media(max-width:520px){.row{grid-template-columns:1fr}.card{padding:13px}header h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header><h1>حضور هودورك</h1><p>نظام تسجيل الحضور والغياب باستخدام QR Code</p></header>
+<main>
+<section id="loginCard" class="card">
+<h2>دخول المشرف</h2>
+<p class="muted">سجّل الدخول بحساب المشرف الذي أنشأته في Firebase Authentication.</p>
+<label>البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" placeholder="admin@example.com">
+<label>كلمة المرور</label><input id="password" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+<button id="loginBtn">تسجيل الدخول</button><div id="loginMsg" class="status hidden"></div>
+</section>
 
+<section id="app" class="hidden">
+<div class="card">
+<div class="listitem"><div><b id="who"></b><div class="muted">حساب المشرف</div></div><button class="secondary" id="logoutBtn">خروج</button></div>
+<div class="tabs">
+<button class="active" data-tab="scan">تسجيل الحضور</button>
+<button data-tab="students">الطلاب وQR</button>
+<button data-tab="lectures">المحاضرات</button>
+<button data-tab="report">كشف الحضور</button>
+</div>
+</div>
+
+<section id="tab-scan" class="card">
+<h2>تسجيل الحضور بالماسح</h2>
+<label>اختر المحاضرة الحالية</label><select id="scanLecture"><option value="">لا توجد محاضرات</option></select>
+<button id="startScan">تشغيل الكاميرا</button><button class="secondary" id="stopScan">إيقاف الكاميرا</button>
+<div id="reader"></div><div id="scanMsg" class="status">اختر المحاضرة ثم شغّل الكاميرا وامسح QR الطالب.</div>
+<p class="muted">كل طالب يُسجّل مرة واحدة فقط في المحاضرة نفسها.</p>
+</section>
+
+<section id="tab-students" class="card hidden">
+<h2>إضافة طالب وإنشاء QR</h2>
+<div class="row"><div><label>كود الطالب (يجب أن يكون فريدًا)</label><input id="studentCode" placeholder="مثال: 2026001"></div><div><label>اسم الطالب</label><input id="studentName" placeholder="اسم الطالب بالكامل"></div></div>
+<button id="addStudent">حفظ الطالب</button><div id="studentMsg" class="status hidden"></div>
+<div id="studentList"></div>
+<div id="qrArea" class="hidden"><h3 id="qrName"></h3><div id="qrbox"></div><button class="secondary" id="printQr">طباعة QR</button></div>
+</section>
+
+<section id="tab-lectures" class="card hidden">
+<h2>إنشاء محاضرة أو سكشن</h2>
+<label>اسم المحاضرة</label><input id="lectureName" placeholder="مثال: محاضرة رياضيات 1">
+<button id="addLecture">إنشاء المحاضرة</button><div id="lectureMsg" class="status hidden"></div>
+<div id="lectureList"></div>
+</section>
+
+<section id="tab-report" class="card hidden">
+<h2>كشف الحضور</h2>
+<label>اختر المحاضرة</label><select id="reportLecture"></select>
+<button id="loadReport">عرض الكشف</button><button class="secondary" id="downloadCsv">تنزيل CSV</button>
+<div id="reportMsg" class="status">اختر محاضرة لعرض الحضور.</div>
+<div style="overflow-x:auto"><table><thead><tr><th>كود الطالب</th><th>الاسم</th><th>الحالة</th><th>الوقت</th></tr></thead><tbody id="reportRows"></tbody></table></div>
+</section>
+</section>
+<footer>تصميم وبرمجة أحمد عويضه</footer>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ضع قيمة apiKey الصحيحة من Firebase مكان النص بين علامتي الاقتباس أدناه.
+const firebaseConfig = {
+  apiKey: "AIzaSyD2xHB4sOdvfdgi50DaZfFKw8f549sCoI",
+  authDomain: "hodork-industrial-control.firebaseapp.com",
+  projectId: "hodork-industrial-control",
+  storageBucket: "hodork-industrial-control.firebasestorage.app",
+  messagingSenderId: "240405091691",
+  appId: "1:240405091691:web:cf4d35808e0e064b95e82e",
+  measurementId: "G-8FJP24W41G"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let scanner = null, studentsCache = [], lecturesCache = [], csvRows = [];
+
+const $ = id => document.getElementById(id);
+function message(id, text, kind="") { const el=$(id); el.textContent=text; el.className="status "+kind; el.classList.remove("hidden"); }
+function safeId(s){return s.trim().replace(/[\/\\#?[\]]/g,"-").replace(/\s+/g,"-");}
+function showTab(name){
+ document.querySelectorAll('[id^="tab-"]').forEach(x=>x.classList.add("hidden"));
+ $("tab-"+name).classList.remove("hidden");
+ document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+ if(name==="students") loadStudents();
+ if(name==="lectures") loadLectures();
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+
+$("loginBtn").onclick=async()=>{
+ try{
+  await auth.signInWithEmailAndPassword($("email").value.trim(),$("password").value);
+  message("loginMsg","تم تسجيل الدخول","success");
+ }catch(e){message("loginMsg","تعذر الدخول: "+e.message,"error");}
+};
+$("logoutBtn").onclick=()=>auth.signOut();
+auth.onAuthStateChanged(user=>{
+ $("loginCard").classList.toggle("hidden",!!user);
+ $("app").classList.toggle("hidden",!user);
+ if(user){$("who").textContent=user.email||"المشرف";loadStudents();loadLectures();}
+});
+
+async function loadStudents(){
+ try{
+  const snap=await db.collection("students").orderBy("name").get();
+  studentsCache=snap.docs.map(d=>({id:d.id,...d.data()}));
+  $("studentList").innerHTML=studentsCache.length?studentsCache.map(s=>`<div class="listitem"><div><b>${escapeHtml(s.name||"")}</b><div class="muted">الكود: ${escapeHtml(s.code||s.id)}</div></div><button class="secondary" data-qr="${escapeHtml(s.id)}">عرض QR</button></div>`).join(""):"<p class='muted'>لم تتم إضافة طلاب بعد.</p>";
+  $("studentList").querySelectorAll("[data-qr]").forEach(b=>b.onclick=()=>makeQr(b.dataset.qr));
+ }catch(e){$("studentList").textContent="خطأ في تحميل الطلاب: "+e.message;}
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+$("addStudent").onclick=async()=>{
+ const code=$("studentCode").value.trim(), name=$("studentName").value.trim();
+ if(!code||!name){message("studentMsg","اكتب كود الطالب واسمه.");return;}
+ const id=safeId(code);
+ try{
+  const ref=db.collection("students").doc(id), old=await ref.get();
+  if(old.exists){message("studentMsg","هذا الكود مسجل بالفعل. استخدم كودًا مختلفًا.","error");return;}
+  await ref.set({code,name,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  $("studentCode").value="";$("studentName").value="";
+  message("studentMsg","تم حفظ الطالب وإنشاء هويته. يمكنك عرض QR من القائمة.","success");loadStudents();
+ }catch(e){message("studentMsg","تعذر حفظ الطالب: "+e.message,"error");}
+};
+function makeQr(id){
+ const s=studentsCache.find(x=>x.id===id);if(!s)return;
+ $("qrArea").classList.remove("hidden");$("qrName").textContent=s.name+" — "+(s.code||s.id);$("qrbox").innerHTML="";
+ new QRCode($("qrbox"),{text:s.id,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+}
+$("printQr").onclick=()=>window.print();
+
+async function loadLectures(){
+ try{
+  const snap=await db.collection("lectures").orderBy("createdAt","desc").get();
+  lecturesCache=snap.docs.map(d=>({id:d.id,...d.data()}));
+  const opts=lecturesCache.map(l=>`<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`).join("");
+  $("scanLecture").innerHTML=opts||'<option value="">لا توجد محاضرات</option>';
+  $("reportLecture").innerHTML=opts||'<option value="">لا توجد محاضرات</option>';
+  $("lectureList").innerHTML=lecturesCache.map(l=>`<div class="listitem"><span>${escapeHtml(l.name)}</span><span class="muted">${l.createdAt?.toDate?l.createdAt.toDate().toLocaleDateString("ar"): ""}</span></div>`).join("")||"<p class='muted'>لم تنشئ محاضرات بعد.</p>";
+ }catch(e){$("lectureList").textContent="خطأ في تحميل المحاضرات: "+e.message;}
+}
+$("addLecture").onclick=async()=>{
+ const name=$("lectureName").value.trim();if(!name){message("lectureMsg","اكتب اسم المحاضرة.");return;}
+ try{
+  await db.collection("lectures").add({name,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  $("lectureName").value="";message("lectureMsg","تم إنشاء المحاضرة.","success");loadLectures();
+ }catch(e){message("lectureMsg","تعذر إنشاء المحاضرة: "+e.message,"error");}
+};
+
+async function recordAttendance(studentId){
+ const lectureId=$("scanLecture").value;
+ if(!lectureId){message("scanMsg","اختر المحاضرة أولًا.","error");return;}
+ const student=await db.collection("students").doc(studentId).get();
+ if(!student.exists){message("scanMsg","هذا الـ QR غير مسجل في قائمة الطلاب.","error");return;}
+ const attendanceId=lectureId+"_"+studentId;
+ const ref=db.collection("attendance").doc(attendanceId);
+ const existing=await ref.get();
+ if(existing.exists){message("scanMsg","تم تسجيل حضور "+student.data().name+" من قبل في هذه المحاضرة.","error");return;}
+ await ref.set({lectureId,studentId,studentCode:student.data().code||studentId,studentName:student.data().name,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+ message("scanMsg","تم تسجيل حضور: "+student.data().name,"success");
+}
+$("startScan").onclick=async()=>{
+ if(!$("scanLecture").value){message("scanMsg","اختر المحاضرة قبل تشغيل الكاميرا.","error");return;}
+ try{
+  if(!scanner)scanner=new Html5Qrcode("reader");
+  await scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:240,height:240}},async text=>{
+   try{await scanner.pause(true);await recordAttendance(text.trim());setTimeout(()=>{try{scanner.resume();}catch(e){}},1600);}
+   catch(e){message("scanMsg","حدث خطأ: "+e.message,"error");try{scanner.resume();}catch(x){}}
+  });
+  message("scanMsg","الكاميرا تعمل. وجّهها إلى QR الطالب.","success");
+ }catch(e){message("scanMsg","لم نستطع تشغيل الكاميرا. افتح الموقع عبر HTTPS واسمح للمتصفح باستخدام الكاميرا. "+e.message,"error");}
+};
+$("stopScan").onclick=async()=>{if(scanner&&scanner.isScanning){await scanner.stop();message("scanMsg","تم إيقاف الكاميرا.");}};
+
+$("loadReport").onclick=async()=>{
+ const lectureId=$("reportLecture").value;if(!lectureId){message("reportMsg","لا توجد محاضرة مختارة.");return;}
+ try{
+  const snap=await db.collection("attendance").where("lectureId","==",lectureId).get();
+  const attended={};snap.docs.forEach(d=>attended[d.data().studentId]=d.data());
+  const rows=studentsCache.length?studentsCache:((await db.collection("students").get()).docs.map(d=>({id:d.id,...d.data()})));
+  csvRows=rows.map(s=>({code:s.code||s.id,name:s.name,status:attended[s.id]?"حاضر":"غائب",time:attended[s.id]?.createdAt?.toDate?attended[s.id].createdAt.toDate().toLocaleString("ar"):""}));
+  $("reportRows").innerHTML=csvRows.map(r=>`<tr><td>${escapeHtml(r.code)}</td><td>${escapeHtml(r.name)}</td><td>${r.status}</td><td>${escapeHtml(r.time)}</td></tr>`).join("");
+  message("reportMsg",`عدد الطلاب: ${rows.length} — الحضور: ${snap.size} — الغياب: ${rows.length-snap.size}`,"success");
+ }catch(e){message("reportMsg","تعذر تحميل الكشف: "+e.message,"error");}
+};
+$("downloadCsv").onclick=()=>{
+ if(!csvRows.length){message("reportMsg","اعرض كشف الحضور أولًا.");return;}
+ const csv="\uFEFF"+["كود الطالب,الاسم,الحالة,الوقت",...csvRows.map(r=>[r.code,r.name,r.status,r.time].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(","))].join("\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="hodork-attendance.csv";a.click();URL.revokeObjectURL(a.href);
+};
+</script>
+</body>
+</html>
